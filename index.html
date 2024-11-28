@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Selfie Roulette</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        .container {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            align-items: center;
+            flex-direction: row;
+            margin-bottom: 20px;
+        }
+        video, canvas {
+            border: 2px solid black;
+            max-width: 400px;
+            width: 100%;
+            height: auto;
+        }
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 18px;
+        }
+        #message {
+            margin-top: 20px;
+            font-size: 18px;
+            color: green;
+        }
+    </style>
+</head>
+<body>
+    <h1>Selfie Roulette</h1>
+    <div class="container">
+        <video id="video" autoplay playsinline></video>
+        <canvas id="canvas"></canvas>
+    </div>
+    <input type="text" id="photoName" placeholder="Escribe el nombre de la foto" style="margin-top: 20px;">
+    <button id="capture">Tomar Foto</button>
+    <div id="message"></div>
+
+    <script type="module">
+        import { createClient } from "https://cdn.skypack.dev/@supabase/supabase-js";
+
+        const SUPABASE_URL = 'https://fwmsmwnsrucgwxxdzrvf.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ3bXNtd25zcnVjZ3d4eGR6cnZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI4MjQ4NjgsImV4cCI6MjA0ODQwMDg2OH0.iLMBmVixgjy3UONUtTSmZA4QH6sF6IODqCJuSluTejY';
+
+        const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const captureButton = document.getElementById('capture');
+        const messageDiv = document.getElementById('message');
+        const photoNameInput = document.getElementById('photoName');
+
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(error => {
+                console.error('Error al acceder a la cámara:', error);
+                alert('No se pudo acceder a la cámara. Verifica los permisos.');
+            });
+
+        captureButton.addEventListener('click', async () => {
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+            canvas.toBlob(async (blob) => {
+                const fileName = photoNameInput.value.trim() ? `${photoNameInput.value}.png` : `selfie-${Date.now()}.png`;
+
+                const { error } = await supabase
+                    .storage
+                    .from('fotos')
+                    .upload(fileName, blob);
+
+                if (error) {
+                    console.error('Error al subir la foto:', error);
+                    messageDiv.textContent = 'Error al subir la foto.';
+                    messageDiv.style.color = 'red';
+                } else {
+                    messageDiv.textContent = 'Foto subida con éxito.';
+                    messageDiv.style.color = 'green';
+                }
+            }, 'image/png');
+        });
+    </script>
+</body>
+</html>
